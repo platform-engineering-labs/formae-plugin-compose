@@ -26,7 +26,7 @@ type StackHandler struct{}
 type stackProps struct {
 	ProjectName string            `json:"projectName"`
 	ComposeFile string            `json:"composeFile"`
-	Endpoints   map[string]string `json:"endpoints,omitempty"`
+	Endpoints   map[string]string `json:"endpoints"`
 	Status      string            `json:"status,omitempty"`
 }
 
