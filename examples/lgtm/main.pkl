@@ -1,0 +1,47 @@
+/*
+ * LGTM Observability Stack Example
+ *
+ * This example provisions the Grafana LGTM (Loki, Grafana, Tempo, Mimir) stack
+ * using the otel-lgtm all-in-one image. Includes Grafana, Prometheus, and
+ * OpenTelemetry collector endpoints.
+ *
+ * Run with: formae apply --mode reconcile --watch examples/lgtm/main.pkl
+ */
+amends "@formae/forma.pkl"
+
+import "@formae/formae.pkl"
+import "@compose/compose.pkl"
+
+forma {
+  new formae.Stack {
+    label = "observability"
+    description = "LGTM observability stack"
+  }
+
+  new formae.Target {
+    label = "local-docker"
+    namespace = "DOCKER"
+    config = new compose.Config {}
+  }
+
+  new compose.Stack {
+    label = "lgtm"
+    projectName = "formae-lgtm"
+    composeFile = #"""
+      services:
+        lgtm:
+          image: grafana/otel-lgtm:latest
+          ports:
+            - "3000:3000"
+            - "4317:4317"
+            - "4318:4318"
+            - "9090:9090"
+      """#
+    endpoints = new Mapping {
+      ["grafana"] = "lgtm:3000"
+      ["prometheus"] = "lgtm:9090"
+      ["otlp-grpc"] = "lgtm:4317"
+      ["otlp-http"] = "lgtm:4318"
+    }
+  }
+}

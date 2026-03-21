@@ -1,7 +1,7 @@
 /*
  * Basic Example
  *
- * This example shows how to define resources using your plugin.
+ * This example shows how to define Docker Compose stacks using the compose plugin.
  * Run with: formae apply --mode reconcile --watch examples/basic/main.pkl
  */
 amends "@formae/forma.pkl"
@@ -12,35 +12,27 @@ import "@compose/compose.pkl"
 forma {
   new formae.Stack {
     label = "default"
-    description = "Default stack for example resources"
+    description = "Default stack for Docker Compose resources"
   }
 
   new formae.Target {
-    label = "my-target"
+    label = "local-docker"
     namespace = "DOCKER"
-    // Add your provider-specific configuration here
-    // For typed config, create a Config class in your schema:
-    //   config = new example.Config { region = "us-east-1" }
-    config = new Mapping {
-      ["region"] = "us-east-1"
-    }
+    config = new compose.Config {}
   }
 
-  new example.ExampleResource {
-    label = "my-resource"
-    name = "My Example Resource"
-    description = "This is an example resource"
-    region = "us-east-1"
-
-    endpoint = new example.Endpoint {
-      url = "https://api.example.com"
-      port = 8080
-      protocol = "https"
-    }
-
-    tags = new Listing {
-      new example.Tag { key = "Environment"; value = "development" }
-      new example.Tag { key = "Team"; value = "platform" }
+  new compose.Stack {
+    label = "my-app"
+    projectName = "my-app"
+    composeFile = #"""
+      services:
+        web:
+          image: nginx:alpine
+          ports:
+            - "8080:80"
+      """#
+    endpoints = new Mapping {
+      ["web"] = "web:80"
     }
   }
 }

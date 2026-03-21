@@ -1,96 +1,60 @@
-/*
- * Example Formae Plugin Schema
- *
- * This file defines the resource types your plugin supports.
- * Each resource class extends formae.Resource and includes
- * a ResourceHint annotation with metadata.
- *
- * See the AWS plugin for comprehensive examples:
- * https://github.com/platform-engineering-labs/formae/tree/main/plugins/aws/schema/pkl
- */
-module example
+/// Docker Compose plugin schema.
+/// Defines target configuration and resource types for Docker Compose stack management.
+module compose
 
 import "@formae/formae.pkl"
 
-// =============================================================================
-// Tag - Plain class example
-// =============================================================================
-// Use a plain class (not SubResource) when:
-// - The structure is simple and universal (like key-value pairs)
-// - You manually define output with hidden/fixed pattern
-// - No FieldHints needed
-//
-// Use SubResource when:
-// - The nested object has multiple configurable fields
-// - Fields need FieldHint annotations (createOnly, entitySet, etc.)
-// - You want automatic output transformation via props()/render()
+/// Target configuration for a Docker host.
+/// Contains only the deployment location, NOT credentials.
+/// The Docker socket or remote host to connect to.
+open class Config {
+  hidden fixed type: String = "Docker"
+  hidden host: String = "unix:///var/run/docker.sock"
 
-/// Tag for resource identification and organization.
-open class Tag {
-    hidden key: String
-    hidden value: String
-
-    fixed Key: String = key
-    fixed Value: String = value
+  fixed Type: String = type
+  fixed Host: String = host
 }
 
-// =============================================================================
-// Endpoint - SubResource example
-// =============================================================================
-// SubResource provides props() and render() methods for automatic output
-// transformation, and integrates with the schema system for field hints.
+/// Resource type constant for Stack.
+const type: String = "Docker::Compose::Stack"
 
-/// Network endpoint configuration.
-@formae.SubResourceHint {}
-class Endpoint extends formae.SubResource {
-    /// The endpoint URL
-    @formae.FieldHint {}
-    url: String
-
-    /// The port number
-    @formae.FieldHint {}
-    port: Int = 443
-
-    /// The protocol (http or https)
-    @formae.FieldHint {}
-    protocol: String = "https"
-}
-
-// =============================================================================
-// ExampleResource - Main resource definition
-// =============================================================================
-
-/// ExampleResource demonstrates the structure of a Formae resource.
-/// TODO: Replace with your actual resource definitions.
+/// A Docker Compose stack resource.
+/// Manages a docker compose project lifecycle.
 @formae.ResourceHint {
-    type = "DOCKER::Service::Resource"
-    identifier = "$.Id"
+  type = module.type
+  identifier = "$.projectName"
 }
-class ExampleResource extends formae.Resource {
-    fixed hidden type: String = "DOCKER::Service::Resource"
+class Stack extends formae.Resource {
+  fixed hidden type: String = module.type
 
-    /// The display name of the resource
-    @formae.FieldHint {}
-    name: String
+  /// The compose project name, used as native ID.
+  /// Cannot be changed after creation (triggers replacement).
+  @formae.FieldHint { createOnly = true }
+  projectName: String
 
-    /// Optional description
-    @formae.FieldHint {}
-    description: String?
+  /// The compose YAML content (mutable, changes trigger update).
+  @formae.FieldHint {}
+  composeFile: String
 
-    /// Region cannot be changed after creation (triggers replacement)
-    @formae.FieldHint { createOnly = true }
-    region: String?
+  /// Named endpoint declarations mapping name to "service:port"
+  /// (e.g., "grafana" -> "lgtm:3000"). Resolved to actual URLs after apply.
+  @formae.FieldHint {}
+  endpoints: Mapping<String, String>?
 
-    /// Network endpoint configuration (SubResource example)
-    @formae.FieldHint {}
-    endpoint: Endpoint?
+  /// Read-only, the project status.
+  status: String?
 
-    /// Resource tags for identification and organization.
-    /// Uses EntitySet semantics: items are matched by Key for updates.
-    /// See: https://docs.formae.io/plugin-sdk/collection-semantics
-    @formae.FieldHint {
-        updateMethod = "EntitySet"
-        indexField = "Key"
-    }
-    tags: Listing<Tag>?
+  local parent = this
+  hidden res: StackResolvable = new {
+    label = parent.label
+    stack = parent.stack?.label
+  }
+}
+
+/// Resolvable reference to a Stack.
+/// Allows other resources to reference Stack properties.
+open class StackResolvable extends formae.Resolvable {
+  hidden type = module.type
+  hidden endpoints: StackResolvable = (this) { property = "endpoints" }
+  hidden projectName: StackResolvable = (this) { property = "projectName" }
 }

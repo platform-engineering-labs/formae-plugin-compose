@@ -1,81 +1,78 @@
-> **⚠️ Do not clone this repository directly!**
->
-> Use `formae plugin init` to create your plugin. This command scaffolds a new
-> plugin from this template with proper naming and configuration.
->
-> ```bash
-> formae plugin init my-plugin
-> ```
+# Docker Compose Plugin for formae
 
----
+Manage Docker Compose stacks as infrastructure with [formae](https://docs.formae.io).
 
-## Setup Checklist
-
-*Remove this section and the warning above after completing setup.*
-
-After creating your plugin with `formae plugin init`, complete these steps:
-
-- [ ] Update `formae-plugin.pkl` with your plugin metadata (name, namespace, description)
-- [ ] Define your resource types in `schema/pkl/*.pkl`
-- [ ] Implement CRUD operations in `plugin.go`
-- [ ] Update test fixtures in `testdata/*.pkl` to use your resources
-- [ ] Update this README (replace title, description, resources table, etc.)
-- [ ] Set up local credentials for testing
-- [ ] Run conformance tests locally: `make conformance-test`
-- [ ] Configure CI credentials in `.github/workflows/ci.yml` (optional)
-- [ ] Remove this checklist section and the warning box above
-
-For detailed guidance, see the [Plugin SDK Documentation](https://docs.formae.io/plugin-sdk).
-
----
-
-# Example Plugin for formae
-
-*TODO: Update title and description for your plugin*
-
-Example Formae plugin template - replace this with a description of what your plugin manages.
-
-## Installation
-
-```bash
-# Install the plugin
-make install
-```
+This plugin provisions and manages Docker Compose projects by shelling out to the `docker compose` CLI. It supports the full resource lifecycle: create, read, update, delete, and discovery.
 
 ## Supported Resources
 
-*TODO: Document your supported resource types*
-
 | Resource Type | Description |
-|---------------|-------------|
-| `DOCKER::Service::Resource` | Example resource (replace with your actual resources) |
+|---|---|
+| `Docker::Compose::Stack` | A Docker Compose project managed via `docker compose up/down` |
 
-## Configuration
+## Target Configuration
 
-Configure a target in your Forma file:
+The plugin connects to a Docker daemon. The default configuration uses the local Docker socket:
 
 ```pkl
 new formae.Target {
-    label = "my-target"
-    namespace = "DOCKER"  // TODO: Update with your namespace
-    config = new Mapping {
-        ["region"] = "us-east-1"
-        // TODO: Add your provider-specific configuration
-    }
+  label = "local-docker"
+  namespace = "DOCKER"
+  config = new compose.Config {}
 }
+```
+
+The `compose.Config` class exposes:
+
+| Field | Default | Description |
+|---|---|---|
+| `host` | `unix:///var/run/docker.sock` | Docker host URI |
+
+Docker credentials (registry auth, TLS certs) are read from the environment, not from the target config.
+
+## Schema Fields
+
+The `compose.Stack` resource has the following fields:
+
+| Field | Type | Mutable | Description |
+|---|---|---|---|
+| `projectName` | `String` | No (createOnly) | Compose project name, used as native ID. Changing triggers replacement. |
+| `composeFile` | `String` | Yes | Compose YAML content. Changes trigger `docker compose up`. |
+| `endpoints` | `Mapping<String, String>?` | Yes | Named endpoint declarations (`name` -> `service:port`). Resolved to actual URLs after apply. |
+| `status` | `String?` | Read-only | Current project status from Docker. |
+
+## Resolvable
+
+A `compose.Stack` exposes a `StackResolvable` for cross-plugin references:
+
+```pkl
+local myStack: compose.Stack = ...
+// Reference from another resource:
+myStack.res.endpoints    // resolves to the endpoints mapping
+myStack.res.projectName  // resolves to the project name
 ```
 
 ## Examples
 
-See the [examples/](examples/) directory for usage examples.
+### Basic
+
+A single nginx container:
 
 ```bash
-# Evaluate an example
-formae eval examples/basic/main.pkl
-
-# Apply resources
 formae apply --mode reconcile --watch examples/basic/main.pkl
 ```
+
+See [examples/basic/main.pkl](examples/basic/main.pkl).
+
+### LGTM Observability Stack
+
+Grafana LGTM all-in-one (Loki, Grafana, Tempo, Mimir) with OpenTelemetry collector:
+
+```bash
+formae apply --mode reconcile --watch examples/lgtm/main.pkl
+```
+
+See [examples/lgtm/main.pkl](examples/lgtm/main.pkl).
 
 ## Development
 
@@ -83,52 +80,45 @@ formae apply --mode reconcile --watch examples/basic/main.pkl
 
 - Go 1.25+
 - [Pkl CLI](https://pkl-lang.org/main/current/pkl-cli/index.html)
-- Cloud provider credentials (for conformance testing)
+- Docker with Compose v2 plugin
 
-### Building
+### Build and Test
 
 ```bash
-make build      # Build plugin binary
-make test       # Run unit tests
-make lint       # Run linter
-make install    # Build + install locally
+make build           # Build plugin binary
+make test            # Run all tests (unit + integration)
+make lint            # Run linter
+make verify-schema   # Validate PKL schema
+make install         # Build + install locally
 ```
 
 ### Local Testing
 
 ```bash
-# Install plugin locally
 make install
-
-# Start formae agent
 formae agent start
-
-# Apply example resources
 formae apply --mode reconcile --watch examples/basic/main.pkl
 ```
 
 ### Conformance Testing
 
-Conformance tests validate your plugin's CRUD lifecycle using the test fixtures in `testdata/`:
+Conformance tests validate the plugin through a full lifecycle: Create, Read/Verify, Update, Replace, Delete, and Discovery.
 
-| File | Purpose |
-|------|---------|
-| `resource.pkl` | Initial resource creation |
-| `resource-update.pkl` | In-place update (mutable fields) |
-| `resource-replace.pkl` | Replacement (createOnly fields) |
-
-The test harness sets `FORMAE_TEST_RUN_ID` for unique resource naming between runs.
+| Fixture | Purpose |
+|---|---|
+| `testdata/resource.pkl` | Initial resource creation |
+| `testdata/resource-update.pkl` | In-place update (add label to compose file) |
+| `testdata/resource-replace.pkl` | Replacement (change projectName, a createOnly field) |
 
 ```bash
 make conformance-test                  # Latest formae version
-make conformance-test VERSION=0.80.0   # Specific version
+make conformance-test VERSION=0.80.1   # Specific version
 ```
 
-The `scripts/ci/clean-environment.sh` script cleans up test resources. It runs before and after conformance tests and should be idempotent.
+The `scripts/ci/clean-environment.sh` script removes leftover `formae-test-*` compose projects. It runs before and after conformance tests.
 
 ## Licensing
 
-Plugins are independent works and may be licensed under any license of the author’s choosing.
+Plugins are independent works and may be licensed under any license of the author's choosing.
 
-See the formae plugin policy:
-<https://docs.formae.io/plugin-sdk/
+See the formae plugin policy: <https://docs.formae.io/plugin-sdk/>
