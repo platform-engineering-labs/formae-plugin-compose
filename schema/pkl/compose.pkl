@@ -38,7 +38,8 @@ class Stack extends formae.Resource {
 
   /// Named endpoint declarations mapping name to "service:port"
   /// (e.g., "grafana" -> "lgtm:3000"). Resolved to actual URLs after apply.
-  @formae.FieldHint {}
+  /// Marked writeOnly because resolved values differ from declared values.
+  @formae.FieldHint { writeOnly = true }
   endpoints: Mapping<String, String>?
 
   /// Read-only, the project status.
