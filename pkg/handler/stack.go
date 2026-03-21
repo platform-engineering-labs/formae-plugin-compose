@@ -255,7 +255,7 @@ func (h *StackHandler) Update(ctx context.Context, _ *config.TargetConfig, nativ
 		}
 	} else {
 		// Remove endpoints file if no endpoints are declared.
-		os.Remove(endpointsPath)
+		_ = os.Remove(endpointsPath)
 	}
 
 	// Run docker compose up (idempotent, recreates changed services).
@@ -312,7 +312,7 @@ func (h *StackHandler) Delete(ctx context.Context, _ *config.TargetConfig, nativ
 
 	// Clean up temp files.
 	composeDir := filepath.Join(os.TempDir(), "formae-compose-"+nativeID)
-	os.RemoveAll(composeDir)
+	_ = os.RemoveAll(composeDir)
 
 	return SuccessResult(resource.OperationDelete, nativeID, nil), nil
 }
