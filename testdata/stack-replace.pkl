@@ -1,0 +1,42 @@
+/*
+ * Conformance Test: Replace Resource
+ *
+ * This file modifies a createOnly field to trigger resource replacement.
+ * Changes from resource.pkl:
+ *   - projectName: changed from "formae-test-{id}" to "formae-test-{id}-replaced"
+ *
+ * The projectName field has createOnly=true, so formae should delete the
+ * existing resource and create a new one with the new project name.
+ */
+amends "@formae/forma.pkl"
+import "@formae/formae.pkl"
+
+import "@compose/compose.pkl"
+
+local testRunID = read("env:FORMAE_TEST_RUN_ID")
+local stackName = "plugin-sdk-test-stack"
+
+forma {
+  new formae.Stack {
+    label = stackName
+    description = "Plugin SDK conformance test stack"
+  }
+
+  new formae.Target {
+    label = "docker-target"
+    namespace = "DOCKER"
+    config = new compose.Config {}
+  }
+
+  new compose.Stack {
+    label = "test-stack"
+    projectName = "formae-test-\(testRunID)-replaced"           // CHANGED - triggers replacement
+    composeFile = #"""
+      services:
+        web:
+          image: nginx:alpine
+          ports:
+            - "18080:80"
+      """#
+  }
+}
