@@ -4,6 +4,18 @@ Manage Docker Compose stacks as infrastructure with [formae](https://docs.formae
 
 This plugin provisions and manages Docker Compose projects by shelling out to the `docker compose` CLI. It supports the full resource lifecycle: create, read, update, delete, and discovery.
 
+## Installation
+
+Requires Go 1.25+, [Pkl CLI](https://pkl-lang.org/main/current/pkl-cli/index.html), and Docker with Compose v2 plugin.
+
+```bash
+git clone https://github.com/platform-engineering-labs/formae-plugin-compose.git
+cd formae-plugin-compose
+make install
+```
+
+This builds the plugin binary and installs it to `~/.pel/formae/plugins/compose/`. The formae agent discovers installed plugins automatically on startup.
+
 ## Supported Resources
 
 | Resource Type | Description |
