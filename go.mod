@@ -3,7 +3,7 @@ module github.com/platform-engineering-labs/formae-plugin-compose
 go 1.25
 
 require (
-	github.com/platform-engineering-labs/formae/pkg/plugin v0.1.17
+	github.com/platform-engineering-labs/formae/pkg/plugin v0.1.21
 	github.com/platform-engineering-labs/formae/pkg/plugin-conformance-tests v0.1.21
 	github.com/stretchr/testify v1.11.1
 )
