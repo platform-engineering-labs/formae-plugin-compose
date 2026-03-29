@@ -23,6 +23,7 @@ const type: String = "Docker::Compose::Stack"
 @formae.ResourceHint {
   type = module.type
   identifier = "$.projectName"
+  discoverable = true
 }
 class Stack extends formae.Resource {
   fixed hidden type: String = module.type
@@ -33,13 +34,16 @@ class Stack extends formae.Resource {
   projectName: String
 
   /// The compose YAML content (mutable, changes trigger update).
+  /// Nullable because discovered stacks may not have the compose file content
+  /// available (it can't be retrieved from Docker).
   @formae.FieldHint {}
-  composeFile: String
+  composeFile: String?
 
-  /// Named endpoint declarations mapping name to "service:port"
-  /// (e.g., "grafana" -> "lgtm:3000"). Resolved to actual URLs after apply.
-  /// Marked writeOnly because resolved values differ from declared values.
-  @formae.FieldHint { writeOnly = true }
+  /// Published endpoints discovered from running containers.
+  /// Keys are "service:containerPort" (e.g., "lgtm:3000"), values are
+  /// resolved URLs (e.g., "http://localhost:3000"). Computed automatically
+  /// from Docker — do not set manually.
+  @formae.FieldHint { hasProviderDefault = true }
   endpoints: Mapping<String, String>?
 
   /// Read-only, the project status.

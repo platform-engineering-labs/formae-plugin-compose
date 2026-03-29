@@ -46,26 +46,10 @@ func (h *StackHandler) Create(ctx context.Context, _ *config.TargetConfig, rawPr
 			"composeFile is required"), nil
 	}
 
-	// Write compose file to a predictable temp location.
-	composeDir := filepath.Join(os.TempDir(), "formae-compose-"+props.ProjectName)
-	if err := os.MkdirAll(composeDir, 0o755); err != nil {
-		return nil, fmt.Errorf("failed to create compose dir: %w", err)
-	}
-	composePath := filepath.Join(composeDir, "docker-compose.yml")
-	if err := os.WriteFile(composePath, []byte(props.ComposeFile), 0o644); err != nil {
-		return nil, fmt.Errorf("failed to write compose file: %w", err)
-	}
-
-	// Persist endpoint declarations so Read can re-resolve them.
-	if len(props.Endpoints) > 0 {
-		endpointsJSON, err := json.Marshal(props.Endpoints)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal endpoint declarations: %w", err)
-		}
-		endpointsPath := filepath.Join(composeDir, "endpoints.json")
-		if err := os.WriteFile(endpointsPath, endpointsJSON, 0o644); err != nil {
-			return nil, fmt.Errorf("failed to write endpoints file: %w", err)
-		}
+	// Write compose file to a temp location for the docker compose CLI.
+	composePath, err := writeComposeFile(props.ProjectName, props.ComposeFile)
+	if err != nil {
+		return nil, err
 	}
 
 	// Run docker compose up.
@@ -74,22 +58,18 @@ func (h *StackHandler) Create(ctx context.Context, _ *config.TargetConfig, rawPr
 			fmt.Sprintf("docker compose up failed: %v", err)), nil
 	}
 
-	// Resolve endpoints.
-	resolvedEndpoints := make(map[string]string, len(props.Endpoints))
-	for name, declaration := range props.Endpoints {
-		resolved, err := resolveEndpoint(ctx, props.ProjectName, declaration)
-		if err != nil {
-			return FailResult(resource.OperationCreate, resource.OperationErrorCodeInternalFailure,
-				fmt.Sprintf("failed to resolve endpoint %q: %v", name, err)), nil
-		}
-		resolvedEndpoints[name] = resolved
+	// Discover endpoints from running containers.
+	psOutput, err := runCompose(ctx, props.ProjectName, "ps", "--format", "json")
+	if err != nil {
+		psOutput = ""
 	}
+	containers, _ := parseComposePS(psOutput)
+	endpoints := discoverEndpoints(containers)
 
-	// Build output properties.
 	outProps := stackProps{
 		ProjectName: props.ProjectName,
 		ComposeFile: props.ComposeFile,
-		Endpoints:   resolvedEndpoints,
+		Endpoints:   endpoints,
 		Status:      "running",
 	}
 	outJSON, err := json.Marshal(outProps)
@@ -98,34 +78,6 @@ func (h *StackHandler) Create(ctx context.Context, _ *config.TargetConfig, rawPr
 	}
 
 	return SuccessResult(resource.OperationCreate, props.ProjectName, outJSON), nil
-}
-
-// resolveEndpoint resolves a declared endpoint (e.g. "web:80") to an actual URL
-// by querying docker compose for the published port.
-func resolveEndpoint(ctx context.Context, projectName, declaration string) (string, error) {
-	parts := strings.SplitN(declaration, ":", 2)
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid endpoint declaration %q: expected service:port", declaration)
-	}
-	service := parts[0]
-	containerPort := parts[1]
-
-	output, err := runCompose(ctx, projectName, "port", service, containerPort)
-	if err != nil {
-		return "", fmt.Errorf("docker compose port failed: %w", err)
-	}
-
-	// Output is like "0.0.0.0:32768\n" or "[::]:32768\n"
-	hostPort := strings.TrimSpace(output)
-	if hostPort == "" {
-		return "", fmt.Errorf("no published port found for %s:%s", service, containerPort)
-	}
-
-	// Replace 0.0.0.0 or [::] with localhost for usable URLs.
-	hostPort = strings.Replace(hostPort, "0.0.0.0", "localhost", 1)
-	hostPort = strings.Replace(hostPort, "[::]", "localhost", 1)
-
-	return "http://" + hostPort, nil
 }
 
 func (h *StackHandler) Read(ctx context.Context, _ *config.TargetConfig, nativeID string) (*resource.ReadResult, error) {
@@ -140,41 +92,28 @@ func (h *StackHandler) Read(ctx context.Context, _ *config.TargetConfig, nativeI
 		return notFound, nil
 	}
 
-	// Parse container states to determine overall status and verify the project is real.
 	containers, err := parseComposePS(psOutput)
 	if err != nil || len(containers) == 0 {
 		return notFound, nil
 	}
 	status := overallStatus(containers)
 
-	// Read the stored compose file.
+	// Try to read compose file from temp cache (exists for formae-managed stacks).
+	// Not an error if missing — discovered stacks won't have this.
+	var composeFile string
 	composeDir := filepath.Join(os.TempDir(), "formae-compose-"+nativeID)
 	composePath := filepath.Join(composeDir, "docker-compose.yml")
-	composeBytes, err := os.ReadFile(composePath)
-	if err != nil {
-		return notFound, nil
+	if data, err := os.ReadFile(composePath); err == nil {
+		composeFile = string(data)
 	}
 
-	// Read stored endpoint declarations (if any).
-	endpointDeclarations := map[string]string{}
-	endpointsPath := filepath.Join(composeDir, "endpoints.json")
-	if data, err := os.ReadFile(endpointsPath); err == nil {
-		_ = json.Unmarshal(data, &endpointDeclarations)
-	}
-
-	// Re-resolve endpoints from running state.
-	resolvedEndpoints := make(map[string]string, len(endpointDeclarations))
-	for name, declaration := range endpointDeclarations {
-		resolved, err := resolveEndpoint(ctx, nativeID, declaration)
-		if err == nil {
-			resolvedEndpoints[name] = resolved
-		}
-	}
+	// Discover endpoints from running containers' published ports.
+	endpoints := discoverEndpoints(containers)
 
 	outProps := stackProps{
 		ProjectName: nativeID,
-		ComposeFile: string(composeBytes),
-		Endpoints:   resolvedEndpoints,
+		ComposeFile: composeFile,
+		Endpoints:   endpoints,
 		Status:      status,
 	}
 	outJSON, err := json.Marshal(outProps)
@@ -190,7 +129,36 @@ func (h *StackHandler) Read(ctx context.Context, _ *config.TargetConfig, nativeI
 
 // containerInfo represents a container from docker compose ps --format json output.
 type containerInfo struct {
-	State string `json:"State"`
+	Service    string          `json:"Service"`
+	State      string          `json:"State"`
+	Publishers []publisherInfo `json:"Publishers"`
+}
+
+type publisherInfo struct {
+	URL           string `json:"URL"`
+	TargetPort    int    `json:"TargetPort"`
+	PublishedPort int    `json:"PublishedPort"`
+	Protocol      string `json:"Protocol"`
+}
+
+// discoverEndpoints builds an endpoints map from running containers' published ports.
+// Keys are "service:containerPort", values are "http://localhost:publishedPort".
+func discoverEndpoints(containers []containerInfo) map[string]string {
+	endpoints := make(map[string]string)
+	for _, c := range containers {
+		for _, p := range c.Publishers {
+			if p.PublishedPort == 0 || p.Protocol != "tcp" {
+				continue
+			}
+			// Skip IPv6 duplicates (0.0.0.0 and :: both map to localhost)
+			if p.URL == "::" {
+				continue
+			}
+			key := fmt.Sprintf("%s:%d", c.Service, p.TargetPort)
+			endpoints[key] = fmt.Sprintf("http://localhost:%d", p.PublishedPort)
+		}
+	}
+	return endpoints
 }
 
 // parseComposePS parses the JSON output of docker compose ps --format json.
@@ -233,29 +201,10 @@ func (h *StackHandler) Update(ctx context.Context, _ *config.TargetConfig, nativ
 			"composeFile is required"), nil
 	}
 
-	// Write updated compose file to the same temp path.
-	composeDir := filepath.Join(os.TempDir(), "formae-compose-"+nativeID)
-	if err := os.MkdirAll(composeDir, 0o755); err != nil {
-		return nil, fmt.Errorf("failed to create compose dir: %w", err)
-	}
-	composePath := filepath.Join(composeDir, "docker-compose.yml")
-	if err := os.WriteFile(composePath, []byte(props.ComposeFile), 0o644); err != nil {
-		return nil, fmt.Errorf("failed to write compose file: %w", err)
-	}
-
-	// Update endpoints.json if endpoints changed.
-	endpointsPath := filepath.Join(composeDir, "endpoints.json")
-	if len(props.Endpoints) > 0 {
-		endpointsJSON, err := json.Marshal(props.Endpoints)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal endpoint declarations: %w", err)
-		}
-		if err := os.WriteFile(endpointsPath, endpointsJSON, 0o644); err != nil {
-			return nil, fmt.Errorf("failed to write endpoints file: %w", err)
-		}
-	} else {
-		// Remove endpoints file if no endpoints are declared.
-		_ = os.Remove(endpointsPath)
+	// Write updated compose file to a temp location for the docker compose CLI.
+	composePath, err := writeComposeFile(nativeID, props.ComposeFile)
+	if err != nil {
+		return nil, err
 	}
 
 	// Run docker compose up (idempotent, recreates changed services).
@@ -264,22 +213,18 @@ func (h *StackHandler) Update(ctx context.Context, _ *config.TargetConfig, nativ
 			fmt.Sprintf("docker compose up failed: %v", err)), nil
 	}
 
-	// Re-resolve endpoints.
-	resolvedEndpoints := make(map[string]string, len(props.Endpoints))
-	for name, declaration := range props.Endpoints {
-		resolved, err := resolveEndpoint(ctx, nativeID, declaration)
-		if err != nil {
-			return FailResult(resource.OperationUpdate, resource.OperationErrorCodeInternalFailure,
-				fmt.Sprintf("failed to resolve endpoint %q: %v", name, err)), nil
-		}
-		resolvedEndpoints[name] = resolved
+	// Discover endpoints from running containers.
+	psOutput, err := runCompose(ctx, nativeID, "ps", "--format", "json")
+	if err != nil {
+		psOutput = ""
 	}
+	updateContainers, _ := parseComposePS(psOutput)
+	endpoints := discoverEndpoints(updateContainers)
 
-	// Build output properties.
 	outProps := stackProps{
 		ProjectName: props.ProjectName,
 		ComposeFile: props.ComposeFile,
-		Endpoints:   resolvedEndpoints,
+		Endpoints:   endpoints,
 		Status:      "running",
 	}
 	outJSON, err := json.Marshal(outProps)
@@ -343,6 +288,20 @@ func (h *StackHandler) List(ctx context.Context, _ *config.TargetConfig, _ int32
 	}
 
 	return &resource.ListResult{NativeIDs: nativeIDs}, nil
+}
+
+// writeComposeFile writes the compose YAML to a temp location for docker compose CLI.
+// This is an ephemeral cache, not persistent state.
+func writeComposeFile(projectName, content string) (string, error) {
+	dir := filepath.Join(os.TempDir(), "formae-compose-"+projectName)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("failed to create compose dir: %w", err)
+	}
+	path := filepath.Join(dir, "docker-compose.yml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return "", fmt.Errorf("failed to write compose file: %w", err)
+	}
+	return path, nil
 }
 
 // runCompose executes a docker compose command for the given project and returns stdout.
