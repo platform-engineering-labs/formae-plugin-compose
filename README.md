@@ -131,6 +131,4 @@ The `scripts/ci/clean-environment.sh` script removes leftover `formae-test-*` co
 
 ## Licensing
 
-Plugins are independent works and may be licensed under any license of the author's choosing.
-
-See the formae plugin policy: <https://docs.formae.io/plugin-sdk/>
+Licensed under FSL-1.1-ALv2. See [LICENSE](LICENSE).
