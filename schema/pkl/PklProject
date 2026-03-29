@@ -2,13 +2,13 @@ amends "pkl:Project"
 
 package {
   name = "compose"
-  baseUri = "package://hub.platform.engineering/plugins/pkl/schema/pkl/compose"
+  baseUri = "package://hub.platform.engineering/plugins/compose/schema/pkl/\(name)/\(name)"
   version = "0.1.0"
-  packageZipUrl = "https://hub.platform.engineering/plugins/pkl/schema/pkl/compose@\(version).zip"
+  packageZipUrl = "https://hub.platform.engineering/plugins/compose/schema/pkl/\(name)/\(name)@\(version).zip"
 }
 
 dependencies {
   ["formae"] {
-    uri = "package://hub.platform.engineering/plugins/pkl/schema/pkl/formae/formae@0.82.3"
+    uri = "package://hub.platform.engineering/plugins/pkl/schema/pkl/formae/formae@0.83.0"
   }
 }
