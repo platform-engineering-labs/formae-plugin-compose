@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/platform-engineering-labs/formae/pkg/model"
 	"github.com/platform-engineering-labs/formae/pkg/plugin"
 	"github.com/platform-engineering-labs/formae/pkg/plugin/resource"
 
@@ -28,21 +29,21 @@ var _ plugin.ResourcePlugin = &Plugin{}
 // =============================================================================
 
 // RateLimit returns the rate limiting configuration for this plugin.
-func (p *Plugin) RateLimit() plugin.RateLimitConfig {
-	return plugin.RateLimitConfig{
-		Scope:                            plugin.RateLimitScopeNamespace,
+func (p *Plugin) RateLimit() model.RateLimitConfig {
+	return model.RateLimitConfig{
+		Scope:                            model.RateLimitScopeNamespace,
 		MaxRequestsPerSecondForNamespace: 5,
 	}
 }
 
 // DiscoveryFilters returns filters to exclude certain resources from discovery.
-func (p *Plugin) DiscoveryFilters() []plugin.MatchFilter {
+func (p *Plugin) DiscoveryFilters() []model.MatchFilter {
 	return nil
 }
 
 // LabelConfig returns the configuration for extracting human-readable labels.
-func (p *Plugin) LabelConfig() plugin.LabelConfig {
-	return plugin.LabelConfig{
+func (p *Plugin) LabelConfig() model.LabelConfig {
+	return model.LabelConfig{
 		DefaultQuery: "$.projectName",
 	}
 }

@@ -60,6 +60,21 @@ class Stack extends formae.Resource {
 /// Allows other resources to reference Stack properties.
 open class StackResolvable extends formae.Resolvable {
   hidden type = module.type
-  hidden endpoints: StackResolvable = (this) { property = "endpoints" }
-  hidden projectName: StackResolvable = (this) { property = "projectName" }
+  local _self = this
+
+  /// Published endpoints mapping. Use at() to access individual endpoints:
+  ///   stack.res.endpoints.at("grafana:3000")  // "http://localhost:3000"
+  hidden endpoints: formae.MappingResolvable = new formae.MappingResolvable {
+    label = _self.label
+    type = _self.type
+    stack = _self.stack
+    property = "endpoints"
+  }
+
+  hidden projectName: formae.Resolvable = new formae.Resolvable {
+    label = _self.label
+    type = _self.type
+    stack = _self.stack
+    property = "projectName"
+  }
 }
