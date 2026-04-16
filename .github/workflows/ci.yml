@@ -134,9 +134,7 @@ jobs:
   conformance-tests:
     needs: [build, lint, pkl-validate, verify-schema]
     runs-on: ubuntu-latest
-    # Disabled by default - change condition after configuring credentials:
-    # if: github.event_name == 'schedule' || github.event_name == 'push' || github.event.inputs.run_conformance == 'true'
-    if: ${{ github.event.inputs.run_conformance == 'true' }}
+    if: github.event_name == 'push' || github.event.inputs.run_conformance == 'true'
     timeout-minutes: 60
 
     strategy:
