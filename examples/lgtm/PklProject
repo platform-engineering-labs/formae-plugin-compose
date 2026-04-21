@@ -2,7 +2,7 @@ amends "pkl:Project"
 
 dependencies {
   ["compose"] {
-    uri = "package://hub.platform.engineering/plugins/compose/schema/pkl/compose/compose@0.1.0"
+    uri = "package://hub.platform.engineering/plugins/compose/schema/pkl/compose/compose@0.1.1"
   }
 
   ["formae"] {

@@ -1,5 +1,5 @@
 name = "compose"
-version = "0.1.0"
+version = "0.1.1"
 namespace = "DOCKER"
 description = "Docker Compose stack management plugin for formae"
 license = "FSL-1.1-ALv2"
