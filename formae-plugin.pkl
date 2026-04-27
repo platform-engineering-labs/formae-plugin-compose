@@ -1,7 +1,9 @@
 name = "compose"
 version = "0.1.1"
 namespace = "DOCKER"
+summary = "Docker Compose resource plugin"
 description = "Docker Compose stack management plugin for formae"
+category = "config"
 license = "FSL-1.1-ALv2"
 minFormaeVersion = "0.84.0"
 
