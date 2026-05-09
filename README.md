@@ -4,18 +4,6 @@ Manage Docker Compose stacks as infrastructure with [formae](https://docs.formae
 
 This plugin provisions and manages Docker Compose projects by shelling out to the `docker compose` CLI. It supports the full resource lifecycle: create, read, update, delete, and discovery.
 
-## Installation
-
-Requires Go 1.25+, [Pkl CLI](https://pkl-lang.org/main/current/pkl-cli/index.html), and Docker with Compose v2 plugin.
-
-```bash
-git clone https://github.com/platform-engineering-labs/formae-plugin-compose.git
-cd formae-plugin-compose
-make install
-```
-
-This builds the plugin binary and installs it to `~/.pel/formae/plugins/compose/`. The formae agent discovers installed plugins automatically on startup.
-
 ## Supported Resources
 
 | Resource Type | Description |
@@ -85,49 +73,6 @@ formae apply --mode reconcile --watch examples/lgtm/main.pkl
 ```
 
 See [examples/lgtm/main.pkl](examples/lgtm/main.pkl).
-
-## Development
-
-### Prerequisites
-
-- Go 1.25+
-- [Pkl CLI](https://pkl-lang.org/main/current/pkl-cli/index.html)
-- Docker with Compose v2 plugin
-
-### Build and Test
-
-```bash
-make build           # Build plugin binary
-make test            # Run all tests (unit + integration)
-make lint            # Run linter
-make verify-schema   # Validate PKL schema
-make install         # Build + install locally
-```
-
-### Local Testing
-
-```bash
-make install
-formae agent start
-formae apply --mode reconcile --watch examples/basic/main.pkl
-```
-
-### Conformance Testing
-
-Conformance tests validate the plugin through a full lifecycle: Create, Read/Verify, Update, Replace, Delete, and Discovery.
-
-| Fixture | Purpose |
-|---|---|
-| `testdata/resource.pkl` | Initial resource creation |
-| `testdata/resource-update.pkl` | In-place update (add label to compose file) |
-| `testdata/resource-replace.pkl` | Replacement (change projectName, a createOnly field) |
-
-```bash
-make conformance-test                  # Latest formae version
-make conformance-test VERSION=0.80.1   # Specific version
-```
-
-The `scripts/ci/clean-environment.sh` script removes leftover `formae-test-*` compose projects. It runs before and after conformance tests.
 
 ## Licensing
 
