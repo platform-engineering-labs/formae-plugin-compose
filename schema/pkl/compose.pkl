@@ -16,7 +16,7 @@ open class Config {
 }
 
 /// Resource type constant for Stack.
-const type: String = "Docker::Compose::Stack"
+const type: String = "DOCKER::Compose::Stack"
 
 /// A Docker Compose stack resource.
 /// Manages a docker compose project lifecycle.
