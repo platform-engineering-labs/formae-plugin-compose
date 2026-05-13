@@ -77,7 +77,7 @@ func TestCreate(t *testing.T) {
 	require.NoError(t, err)
 
 	result, err := p.Create(ctx, &resource.CreateRequest{
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		Label:        projectName,
 		Properties:   props,
 		TargetConfig: testTargetConfig(),
@@ -125,7 +125,7 @@ func TestCreateAlreadyRunning(t *testing.T) {
 	require.NoError(t, err)
 
 	req := &resource.CreateRequest{
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		Label:        projectName,
 		Properties:   props,
 		TargetConfig: testTargetConfig(),
@@ -170,7 +170,7 @@ func TestRead(t *testing.T) {
 	require.NoError(t, err)
 
 	createResult, err := p.Create(ctx, &resource.CreateRequest{
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		Label:        projectName,
 		Properties:   props,
 		TargetConfig: testTargetConfig(),
@@ -182,7 +182,7 @@ func TestRead(t *testing.T) {
 	// Read the stack back.
 	result, err := p.Read(ctx, &resource.ReadRequest{
 		NativeID:     projectName,
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		TargetConfig: testTargetConfig(),
 	})
 	require.NoError(t, err)
@@ -213,7 +213,7 @@ func TestReadNotFound(t *testing.T) {
 
 	result, err := p.Read(ctx, &resource.ReadRequest{
 		NativeID:     "formae-nonexistent-project-xyz",
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		TargetConfig: testTargetConfig(),
 	})
 	require.NoError(t, err)
@@ -256,7 +256,7 @@ func TestUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	createResult, err := p.Create(ctx, &resource.CreateRequest{
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		Label:        projectName,
 		Properties:   createProps,
 		TargetConfig: testTargetConfig(),
@@ -281,7 +281,7 @@ func TestUpdate(t *testing.T) {
 	// Call Update.
 	result, err := p.Update(ctx, &resource.UpdateRequest{
 		NativeID:          projectName,
-		ResourceType:      "Docker::Compose::Stack",
+		ResourceType:      "DOCKER::Compose::Stack",
 		PriorProperties:   priorProps,
 		DesiredProperties: desiredProps,
 		TargetConfig:      testTargetConfig(),
@@ -327,7 +327,7 @@ func TestDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	createResult, err := p.Create(ctx, &resource.CreateRequest{
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		Label:        projectName,
 		Properties:   props,
 		TargetConfig: testTargetConfig(),
@@ -339,7 +339,7 @@ func TestDelete(t *testing.T) {
 	// Delete it.
 	result, err := p.Delete(ctx, &resource.DeleteRequest{
 		NativeID:     projectName,
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		TargetConfig: testTargetConfig(),
 	})
 	require.NoError(t, err)
@@ -350,7 +350,7 @@ func TestDelete(t *testing.T) {
 	// Verify: Read returns NotFound after delete.
 	readResult, err := p.Read(ctx, &resource.ReadRequest{
 		NativeID:     projectName,
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		TargetConfig: testTargetConfig(),
 	})
 	require.NoError(t, err)
@@ -364,7 +364,7 @@ func TestDeleteNotFound(t *testing.T) {
 
 	result, err := p.Delete(ctx, &resource.DeleteRequest{
 		NativeID:     "formae-nonexistent-project-for-delete",
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		TargetConfig: testTargetConfig(),
 	})
 	require.NoError(t, err)
@@ -396,7 +396,7 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 
 	createResult, err := p.Create(ctx, &resource.CreateRequest{
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		Label:        projectName,
 		Properties:   props,
 		TargetConfig: testTargetConfig(),
@@ -407,7 +407,7 @@ func TestList(t *testing.T) {
 
 	// Call List.
 	result, err := p.List(ctx, &resource.ListRequest{
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		TargetConfig: testTargetConfig(),
 	})
 	require.NoError(t, err)

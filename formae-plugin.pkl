@@ -1,5 +1,5 @@
 name = "compose"
-version = "0.1.1"
+version = "0.1.2"
 namespace = "DOCKER"
 summary = "Docker Compose resource plugin"
 description = "Docker Compose stack management plugin for formae"

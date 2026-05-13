@@ -8,7 +8,7 @@ This plugin provisions and manages Docker Compose projects by shelling out to th
 
 | Resource Type | Description |
 |---|---|
-| `Docker::Compose::Stack` | A Docker Compose project managed via `docker compose up/down` |
+| `DOCKER::Compose::Stack` | A Docker Compose project managed via `docker compose up/down` |
 
 ## Target Configuration
 

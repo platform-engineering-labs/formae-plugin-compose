@@ -16,7 +16,7 @@ import (
 )
 
 func init() {
-	Register("Docker::Compose::Stack", &StackHandler{})
+	Register("DOCKER::Compose::Stack", &StackHandler{})
 }
 
 // StackHandler implements CRUD+List for Docker Compose stacks.
@@ -82,7 +82,7 @@ func (h *StackHandler) Create(ctx context.Context, _ *config.TargetConfig, rawPr
 
 func (h *StackHandler) Read(ctx context.Context, _ *config.TargetConfig, nativeID string) (*resource.ReadResult, error) {
 	notFound := &resource.ReadResult{
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		ErrorCode:    resource.OperationErrorCodeNotFound,
 	}
 
@@ -122,7 +122,7 @@ func (h *StackHandler) Read(ctx context.Context, _ *config.TargetConfig, nativeI
 	}
 
 	return &resource.ReadResult{
-		ResourceType: "Docker::Compose::Stack",
+		ResourceType: "DOCKER::Compose::Stack",
 		Properties:   string(outJSON),
 	}, nil
 }
