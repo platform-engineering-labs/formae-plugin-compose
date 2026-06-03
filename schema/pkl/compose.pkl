@@ -46,7 +46,8 @@ class Stack extends formae.Resource {
   @formae.FieldHint { hasProviderDefault = true }
   endpoints: Mapping<String, String>?
 
-  /// Read-only, the project status.
+  /// Read-only, the project status. Provider-computed from container state.
+  @formae.FieldHint { hasProviderDefault = true }
   status: String?
 
   local parent = this
