@@ -39,6 +39,13 @@ class Stack extends formae.Resource {
   @formae.FieldHint {}
   composeFile: String?
 
+  /// Environment variables passed to the compose project at apply time, so the
+  /// composeFile can interpolate them with ${VAR}. Values may be resolvables,
+  /// letting a container's config be wired from other resources' outputs (e.g.
+  /// ["VLLM_HOST"] = instance.res.publicIp). Mutable.
+  @formae.FieldHint {}
+  variables: Mapping<String, (String|formae.Resolvable)>?
+
   /// Published endpoints discovered from running containers.
   /// Keys are "service:containerPort" (e.g., "lgtm:3000"), values are
   /// resolved URLs (e.g., "http://localhost:3000"). Computed automatically
