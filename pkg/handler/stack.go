@@ -26,6 +26,7 @@ type StackHandler struct{}
 type stackProps struct {
 	ProjectName string            `json:"projectName"`
 	ComposeFile string            `json:"composeFile"`
+	Variables   map[string]string `json:"variables,omitempty"`
 	Endpoints   map[string]string `json:"endpoints"`
 	Status      string            `json:"status,omitempty"`
 }
@@ -53,7 +54,7 @@ func (h *StackHandler) Create(ctx context.Context, _ *config.TargetConfig, rawPr
 	}
 
 	// Run docker compose up.
-	if _, err := runCompose(ctx, props.ProjectName, "-f", composePath, "up", "-d", "--wait"); err != nil {
+	if _, err := runComposeWithEnv(ctx, props.ProjectName, props.Variables, "-f", composePath, "up", "-d", "--wait"); err != nil {
 		return FailResult(resource.OperationCreate, MapExecError(err),
 			fmt.Sprintf("docker compose up failed: %v", err)), nil
 	}
@@ -69,6 +70,7 @@ func (h *StackHandler) Create(ctx context.Context, _ *config.TargetConfig, rawPr
 	outProps := stackProps{
 		ProjectName: props.ProjectName,
 		ComposeFile: props.ComposeFile,
+		Variables:   props.Variables,
 		Endpoints:   endpoints,
 		Status:      "running",
 	}
@@ -208,7 +210,7 @@ func (h *StackHandler) Update(ctx context.Context, _ *config.TargetConfig, nativ
 	}
 
 	// Run docker compose up (idempotent, recreates changed services).
-	if _, err := runCompose(ctx, nativeID, "-f", composePath, "up", "-d", "--wait"); err != nil {
+	if _, err := runComposeWithEnv(ctx, nativeID, props.Variables, "-f", composePath, "up", "-d", "--wait"); err != nil {
 		return FailResult(resource.OperationUpdate, MapExecError(err),
 			fmt.Sprintf("docker compose up failed: %v", err)), nil
 	}
@@ -224,6 +226,7 @@ func (h *StackHandler) Update(ctx context.Context, _ *config.TargetConfig, nativ
 	outProps := stackProps{
 		ProjectName: props.ProjectName,
 		ComposeFile: props.ComposeFile,
+		Variables:   props.Variables,
 		Endpoints:   endpoints,
 		Status:      "running",
 	}
@@ -306,8 +309,31 @@ func writeComposeFile(projectName, content string) (string, error) {
 
 // runCompose executes a docker compose command for the given project and returns stdout.
 func runCompose(ctx context.Context, projectName string, args ...string) (string, error) {
+	return runComposeWithEnv(ctx, projectName, nil, args...)
+}
+
+// composeEnv returns base with the given variables appended as KEY=VALUE entries,
+// so `docker compose` can interpolate ${KEY} in the composeFile. base is normally
+// os.Environ(). nil/empty variables returns base unchanged.
+func composeEnv(base []string, variables map[string]string) []string {
+	if len(variables) == 0 {
+		return base
+	}
+	out := make([]string, len(base), len(base)+len(variables))
+	copy(out, base)
+	for k, v := range variables {
+		out = append(out, k+"="+v)
+	}
+	return out
+}
+
+// runComposeWithEnv runs a docker compose command with extra environment variables
+// appended for ${VAR} interpolation in the composeFile. nil variables behaves like
+// a plain run (the process inherits os.Environ()).
+func runComposeWithEnv(ctx context.Context, projectName string, variables map[string]string, args ...string) (string, error) {
 	cmdArgs := append([]string{"compose", "-p", projectName}, args...)
 	cmd := exec.CommandContext(ctx, "docker", cmdArgs...)
+	cmd.Env = composeEnv(os.Environ(), variables)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
