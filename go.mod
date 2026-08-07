@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/platform-engineering-labs/formae/pkg/model v0.1.24
-	github.com/platform-engineering-labs/formae/pkg/plugin v0.2.2
+	github.com/platform-engineering-labs/formae/pkg/plugin v0.3.0
 	github.com/platform-engineering-labs/formae/pkg/plugin-conformance-tests v0.2.4
 	github.com/stretchr/testify v1.11.1
 )
