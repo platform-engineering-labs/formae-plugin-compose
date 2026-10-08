@@ -1,8 +1,34 @@
-# Docker Compose Plugin for formae
+# Docker Compose plugin for formae
 
-Manage Docker Compose stacks as infrastructure with [formae](https://docs.formae.io).
+Manage Docker Compose stacks as infrastructure with [formae](https://github.com/platform-engineering-labs/formae).
 
 This plugin provisions and manages Docker Compose projects by shelling out to the `docker compose` CLI. It supports the full resource lifecycle: create, read, update, delete, and discovery.
+
+[formae](https://github.com/platform-engineering-labs/formae) · [Hub](https://hub.platform.engineering/platform.engineering/compose)
+
+## Install
+
+Requires the formae CLI: see the [quick start](https://docs.formae.ai/documentation/get-started/quickstart).
+
+```bash
+formae plugin install compose
+```
+
+Restart the formae agent afterwards so it loads the plugin.
+
+**New project:** `formae project init --yes my-project` creates `my-project` with a `PklProject` and a starter `main.pkl`; then add the compose dependency as for an existing project. Don't run it in an existing project: it overwrites both files.
+
+**Existing project:** add the plugin to `dependencies` in your `PklProject`, with the current version from the [hub page](https://hub.platform.engineering/platform.engineering/compose), then run `pkl project resolve`:
+
+```pkl
+["compose"] {
+  uri = "package://hub.platform.engineering/plugins/compose/schema/pkl/compose/compose@<version>"
+}
+```
+
+Next: [write your first forma](https://docs.formae.ai/documentation/get-started/write-your-first-forma), then [`formae apply`](https://docs.formae.ai/documentation/reference/cli/apply) (see [apply modes](https://docs.formae.ai/documentation/concepts/apply-modes)).
+
+With an AI coding assistant, use the [formae plugin](https://docs.formae.ai/documentation/guides/ai-coding-assistants) (formerly `formae-mcp`), which can search the hub and fetch plugin examples. The formae documentation is also available as [llms.txt](https://docs.formae.ai/llms.txt).
 
 ## Supported Resources
 
